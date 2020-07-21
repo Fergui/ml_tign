@@ -1,0 +1,9 @@
+{
+  "sleep_seconds": 5,
+  "download_sleep_seconds": 5,
+  "max_retries": 5,
+  "workspace_path": "work",
+  "sys_install_path": "/path/to/ml_tign",
+  "wget" : "/opt/local/bin/wget",
+  "wget_options": ["--read-timeout=1","--limit-rate=10m","--random-wait"]
+} 
