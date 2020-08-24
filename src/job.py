@@ -5,7 +5,7 @@
 import logging
 import os.path as osp
 
-from utils.general import Dict, load_sys_cfg, process_arguments
+from utils.general import Dict, load_sys_cfg, make_dir, process_arguments
 from utils.times import esmf_now, str_to_dt
 
 class JobError(Exception):
@@ -27,6 +27,7 @@ class Job(Dict):
         self.job_name = self.case_name+'_'+esmf_now()
         # job path
         self.job_path = osp.join(self.workspace_path,self.job_name)
+        make_dir(self.job_path)	
         # add new attributes
         self.bounds = tuple(self.bbox) 
         self.from_utc = str_to_dt(self.start_utc)

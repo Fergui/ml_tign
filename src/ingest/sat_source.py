@@ -144,10 +144,13 @@ class SatSource(object):
                 else:
                     logging.warning('group_metas - geolocation not found for id {}'.format(k))
         # delete geolocation if not fire on it
+        exc = []
         for k in gmetas.geo.keys():
             if k not in gmetas.fire.keys():
                 logging.warning('group_metas - fire meta not found for id {}, eliminating geolocation meta'.format(k))
-                gmetas.geo.pop(k)
+                exc.append(k)
+        for k in exc:
+            gmetas.geo.pop(k)
 
         return gmetas
 

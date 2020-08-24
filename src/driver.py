@@ -7,7 +7,8 @@ from ingest.MODIS import Terra,Aqua
 from ingest.VIIRS import SNPP
 
 from multiprocessing import Process,Queue
-import sys,logging,traceback
+import os.path as osp
+import sys,logging,traceback,json
 
 class DriverError(Exception):
     """
@@ -42,21 +43,23 @@ class Driver(object):
         """
         This function retrieves all satellite data sources.
         """
+        # create queue
         proc_q = Queue()
         sat_proc = {}
+        # create process for each sat source
         for sat_source in self.sat_sources:
             sat_proc[sat_source.id] = Process(target=retrieve_sat_source, args=(self.job, sat_source, proc_q))
-        
+        # start processes
         for sat_source in self.sat_sources:
             sat_proc[sat_source.id].start()
-        
+        # wait processes
         for sat_source in self.sat_sources:
             sat_proc[sat_source.id].join()
-        
+        # ensure processes
         for sat_source in self.sat_sources:
             if proc_q.get() != 'SUCCESS':
                 return
-                
+        # close queue
         proc_q.close()
 
 def retrieve_sat_source(js, sat_source, q):
@@ -72,10 +75,10 @@ def retrieve_sat_source(js, sat_source, q):
     try:
         logging.info('retrieve_sat_source - retrieving satellite files from {}'.format(sat_source.id))
         # retrieve satellite granules intersecting the last domain
-        manifest = sat_source.retrieve_data_sat(js.bounds, js.start_utc, js.end_utc)
+        manifest = sat_source.retrieve_data()
         # write a json file with satellite information
         sat_file = sat_source.id+'.json'
-        json.dump(manifest, open(osp.join(js.jobdir,sat_file),'w'), indent=4, separators=(',', ': '))
+        json.dump(manifest, open(osp.join(js.job_path,sat_file),'w'), indent=4, separators=(',', ': '))
         logging.info('retrieve_sat_source - satellite retrieval complete for {}'.format(sat_source.id))
         q.put('SUCCESS')
 
