@@ -10,7 +10,7 @@ from utils.general import Dict, available_locally, duplicates
 from utils.times import dt_to_esmf, str_to_dt
 from .downloader import download_url, DownloadError
 
-class SatError(Exception):
+class SatSourceError(Exception):
     """
     Raised when a SatSource cannot retrieve satellite data.
     """
@@ -178,7 +178,7 @@ class SatSource(object):
         logging.error('download_sat - {} cannot download satellite file'.format(self.prefix))
         logging.warning('download_sat - please check {0} for {1}'.format(self.info_url, self.info))
         return {}
-        raise SatError('SatSource - failed to download file {}'.format(url))
+        raise SatSourceError('SatSource - failed to download file {}'.format(url))
 
     def retrieve_metas(self, metas):
         """
@@ -231,26 +231,6 @@ class SatSource(object):
         logging.info('retrieve_sat - adquiered {0} granules for {1} satellite service'.format(len(manifest.keys()),self.prefix))
 
         return manifest
-
-    def read_all(self, files, metas, bounds):
-        """
-        Read all the satellite files from a specific satellite service
-
-        :param file: dictionary with geolocation (03), fire (14) (, and reflectance (09)) file paths for satellite service
-        :param bounds: spatial bounds tuple (lonmin,lonmax,latmin,latmax)
-        :return ret: dictionary with Latitude, Longitude and fire mask arrays read
-        """
-        pass
-
-    def read_files(self, file, bounds):
-        """
-        Read a specific satellite files from a specific satellite service
-
-        :param file: dictionary with geolocation (03), fire (14) (, and reflectance (09)) file paths for satellite service
-        :param bounds: spatial bounds tuple (lonmin,lonmax,latmin,latmax)
-        :return ret: dictionary with Latitude, Longitude and fire mask arrays read
-        """
-        pass
 
     def datacenter_to_appkey(self,data_center):
         """

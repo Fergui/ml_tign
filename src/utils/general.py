@@ -136,3 +136,24 @@ def process_arguments(sys_cfg,job_file):
     tokens = load_json('etc/tokens.json')
     args.update(tokens)
     return args
+
+def json_join(path,json_list):
+    """
+    Join local jsons in a singular json and remove the previous jsons
+
+    :param path: local path to the jsons
+    :param json_list: list of json files to join
+    """
+    manifest = Dict({})
+    for jj in json_list:
+        json_path = osp.join(path,str(jj)+'.json')
+        try:
+            f = json.load(open(json_path))
+            manifest.update({jj: f})
+        except:
+            logging.warning('no satellite data for source %s in manifest json file %s' % (jj,json_path))
+            manifest.update({jj: {}})
+            pass
+        remove(json_path)
+    json.dump(manifest, open(osp.join(path, 'granules.json'),'w'), indent=4, separators=(',', ': '))
+    return manifest

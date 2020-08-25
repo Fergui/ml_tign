@@ -5,6 +5,7 @@
 from job import Job
 from ingest.MODIS import Terra,Aqua
 from ingest.VIIRS import SNPP
+from utils.general import json_join
 
 from multiprocessing import Process,Queue
 import os.path as osp
@@ -62,6 +63,14 @@ class Driver(object):
         # close queue
         proc_q.close()
 
+    def read_sat_data(self):
+        """
+        This function reads all satellite data retrieved and saved in JSON files.
+        """
+        data = SatCollection(self.job).process()
+        return data
+
+
 def retrieve_sat_source(js, sat_source, q):
     """
     This function retrieves satellite data from sat_source.
@@ -86,10 +95,13 @@ def retrieve_sat_source(js, sat_source, q):
         logging.error('retrieve_sat_source - satellite retrieving step failed with exception {}'.format(repr(e)))
         traceback.print_exc()
         q.put('FAILURE')
-
+    
+    
 if __name__=='__main__':
     # create driver
     dv = Driver(sys.argv[1])
     # retrieve satellite data
     dv.retrieve_sat_data()
+    # read satellite data
+    dv.read_sat_data()
     # run ML estimation

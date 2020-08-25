@@ -3,7 +3,7 @@
 #
 
 from datetime import datetime
-import pytz, logging
+import time, logging
 
 def utc_now():
     # UTC datetime now
@@ -14,6 +14,24 @@ def local_now():
     # local datetime now
     dnow = datetime.now()
     return dnow
+
+def dt_to_num(dt):
+    """
+    Transform a datetime to a time integer number of seconds since December 31 1969 at 17:00:00
+
+    :param dt: datetime object
+    :return: integer number of seconds since December 31 1969 at 17:00:00
+    """
+    return datetime.timestamp(dt)
+
+def num_to_dt(num):
+    """
+    Transform a time integer number of seconds since December 31 1969 at 17:00:00 into a datetime
+
+    :param num: integer number of seconds since December 31 1969 at 17:00:00
+    :return: datetime object
+    """
+    return datetime.fromtimestamp(num)
 
 def dt_to_str(dt,fmt="%04d-%02d-%02d_%02d:%02d:%02d"):
     """
@@ -49,7 +67,7 @@ def str_to_dt(t_str,fmt="%Y-%m-%d_%H:%M:%S"):
     if not isinstance(t_str,str):
         logging.error('str_to_dt - input must be an string')
         return None
-    return datetime.strptime(t_str,fmt).replace(tzinfo=pytz.UTC)
+    return datetime.strptime(t_str,fmt)
 
 def esmf_to_dt(t_str):
     """
