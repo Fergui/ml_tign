@@ -2,11 +2,11 @@
 # Angel Farguell, CU Denver
 #
 
-import logging
-import os.path as osp
-
 from utils.general import Dict, load_sys_cfg, make_dir, process_arguments
 from utils.times import esmf_now, str_to_dt
+
+import logging,json
+import os.path as osp
 
 class JobError(Exception):
     """
@@ -30,6 +30,8 @@ class Job(Dict):
         make_dir(self.job_path)	
         # add new attributes
         self.bounds = tuple(self.bbox) 
+        # save job state in work directory
+        json.dump(self, open(osp.join(self.job_path,'job.json'),'w'), indent=4, separators=(',', ': '))
         self.from_utc = str_to_dt(self.start_utc)
         self.to_utc = str_to_dt(self.end_utc)
         self.times = (self.from_utc,self.to_utc)

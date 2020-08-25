@@ -113,7 +113,7 @@ class SatSource(object):
         :param metas: satellite metadatas from API search
         :return result: groupped and cleanned metadata dictionary
         """
-        g_id = lambda m: ''.join(m['producer_granule_id'].split('.')[1:3])
+        g_id = lambda m: '_'.join(m['producer_granule_id'].split('.')[1:3])
         gmetas = Dict({})
         gmetas.geo = Dict({})
         gmetas.fire = Dict({})

@@ -1,6 +1,13 @@
 from utils.general import Dict
+from utils.times import str_to_dt,dt_to_num
 
+from pyhdf.SD import SD, SDC
+import h5py
+import netCDF4 as nc4
+
+import os.path as osp
 import numpy as np
+import logging
 
 class SatGranuleError(Exception):
     """
@@ -21,7 +28,7 @@ class SatGranule(object):
         """
         self.manifest = Dict(js)
         self.time_start_iso = self.manifest.get('time_start_iso')
-        self.datetime = esmf_to_dt(self.time_start_iso)
+        self.datetime = str_to_dt(self.time_start_iso,fmt="%Y-%m-%dT%H:%M:%S.000Z")
         self.time_num = dt_to_num(self.datetime)
         self.acq_date = "{0:04d}-{1:02d}-{2:02d}".format(self.datetime.year,
                                                 self.datetime.month,
@@ -36,18 +43,21 @@ class SatGranule(object):
     def read_granule(self):
         geo_ds,geo_ext = open_file(self.manifest.geo_local_path)
         fire_ds,fire_ext = open_file(self.manifest.fire_local_path)
-        granule = Dict({})
+        granule = {}
         for key,field in self.geo_fields:
-            granule[key] = self.read_geo_field(geo_ds,field)
-        granule['granule_mask'] = self.compute_mask(np.ravel(granule.lat),np.ravel(granule.lon))   
+            granule.update({key: self.read_geo_field(geo_ds,field)})
+        granule.update({'granule_mask': self.compute_mask(np.ravel(granule['lat']),np.ravel(granule['lon']))})  
         key,field = self.fire_mask_field
-        granule[key] = self.read_field(fire_ds,field)
+        granule.update({key: self.read_field(fire_ds,field)})
         for key,field in self.geo_fire_fields:
-            granule[key] = self.read_field(fire_ds,field)
-        granule['detect_mask'] = self.compute_mask(np.ravel(granule.lat_fire),np.ravel(granule.lon_fire))   
+            granule.update({key: self.read_field(fire_ds,field)})
+        granule.update({'detect_mask': self.compute_mask(np.ravel(granule['lat_fire']),np.ravel(granule['lon_fire']))})   
         for key,field in self.fire_fields:
-            granule[key] = self.read_field(fire_ds,field,granule['detect_mask'])
-        granule.scan_angle_fire,granule.scan_fire,granule.track_fire=self.pixel_dims(granule.sample_fire)
+            granule.update({key: self.read_field(fire_ds,field,granule['detect_mask'])})
+        scan_angle_fire,scan_fire,track_fire=self.pixel_dims(granule['sample_fire'])
+        granule.update({'scan_angle_fire': scan_angle_fire,
+                        'scan_fire': scan_fire,
+                        'track_fire': track_fire})
         close_file(geo_ds,geo_ext)
         close_file(fire_ds,fire_ext)
         return granule
@@ -66,7 +76,7 @@ class SatGranule(object):
         M = (self.num_cols-1)*0.5
         s = np.arctan(self.nadir_pixel_res/self.sat_altitude) # trigonometry (deg/sample)
         alpha = self.angle_changes
-        if alpha:
+        if not alpha is None:
             Ns = np.array([int((alpha[k]-alpha[k-1])/s[k-1]) for k in range(1,len(alpha)-1)])
             Ns = np.append(Ns,int(M-Ns.sum()))
             theta = s[0]*(sample-M)
@@ -99,8 +109,7 @@ class SatGranule(object):
     sat_altitude=None
     nadir_pixel_res=None
     angle_changes=None
-    geo_fields=[('lat','Latitude'),
-                ('lon','Longitude')]
+    geo_fields=None
     geo_fire_fields=[('lat_fire','FP_latitude'),
                     ('lon_fire','FP_longitude')]
     fire_mask_field=('fire','fire mask')
@@ -112,8 +121,8 @@ class MODISGranule(SatGranule):
     """
     MODIS (Moderate Resolution Imaging Spectroradiometer) granule.
     """
-    def __init__(self, arg):
-        super(MODISGranule, self).__init__(arg)
+    def __init__(self, js, bounds):
+        super(MODISGranule, self).__init__(js, bounds)
 
     def read_geo_field(self,ds,field):
         return self.read_field(ds,field) 
@@ -125,13 +134,15 @@ class MODISGranule(SatGranule):
                 return np.array(ds.select(field).get())[mask]
             else:
                 return np.array(ds.select(field).get())
-        else:
+        except:
             return np.array([])  
 
     # instance variables
     num_cols=1354
     sat_altitude=705.
     nadir_pixel_res=1.
+    geo_fields=[('lat','Latitude'),
+                ('lon','Longitude')]
     fire_fields=[('brig_fire','FP_T21'),
                 ('sample_fire','FP_sample'),
                 ('conf_fire','FP_confidence'),
@@ -142,8 +153,8 @@ class TerraGranule(MODISGranule):
     """
     Terra MODIS (Moderate Resolution Imaging Spectroradiometer) granule.
     """
-    def __init__(self, arg):
-        super(TerraGranule, self).__init__(arg)
+    def __init__(self, js, bounds):
+        super(TerraGranule, self).__init__(js, bounds)
 
     # instance variables
     info_url='https://terra.nasa.gov/about/terra-instruments/modis'
@@ -155,8 +166,8 @@ class AquaGranule(MODISGranule):
     """
     Aqua MODIS (Moderate Resolution Imaging Spectroradiometer) granule.
     """
-    def __init__(self, arg):
-        super(AquaGranule, self).__init__(arg)
+    def __init__(self, js, bounds):
+        super(AquaGranule, self).__init__(js, bounds)
 
     # instance variables
     info_url='https://aqua.nasa.gov/modis'
@@ -169,12 +180,12 @@ class VIIRSGranule(SatGranule):
     """
     VIIRS (Visible Infrared Imaging Radiometer Suite) satellite source.
     """
-    def __init__(self, arg):
-        super(VIIRSGranule, self).__init__(arg)
+    def __init__(self, js, bounds):
+        super(VIIRSGranule, self).__init__(js, bounds)
 
     @staticmethod
     def read_geo_field(ds,field):
-        return np.array(ds['HDFEOS']['SWATHS']['VNP_750M_GEOLOCATION']['Geolocation Fields'][field]) 
+        return np.array(ds.groups['geolocation_data'].variables[field]) 
 
     @staticmethod
     def read_field(ds,field,mask = None):
@@ -183,7 +194,7 @@ class VIIRSGranule(SatGranule):
                 return np.array(ds.variables[field][:])[mask]
             else:
                 return np.array(ds.variables[field][:])
-        else:
+        except:
             return np.array([]) 
 
     # instance variables
@@ -191,6 +202,8 @@ class VIIRSGranule(SatGranule):
     sat_altitude=828.
     nadir_pixel_res=np.array([0.75,0.75/2,0.75/3])
     angle_changes=np.array([0,31.59,44.68,56.06])/180*np.pi
+    geo_fields=[('lat','latitude'),
+                ('lon','longitude')]
     fire_fields=[('brig_fire','FP_T13'),
                 ('sample_fire','FP_sample'),
                 ('conf_fire','FP_confidence'),
@@ -201,8 +214,8 @@ class SNPPGranule(VIIRSGranule):
     """
     S-NPP VIIRS (Visible Infrared Imaging Radiometer Suite) satellite source.
     """
-    def __init__(self, arg):
-        super(SNPPGranule, self).__init__(arg)
+    def __init__(self, js, bounds):
+        super(SNPPGranule, self).__init__(js, bounds)
     
     # instance variables
     info_url='https://www.nasa.gov/mission_pages/NPP/mission_overview/index.html'
@@ -233,12 +246,13 @@ def open_file(path_file):
             d = SD(path_file,SDC.READ)
         except Exception as e:
             logging.error('open_file: can not open file %s with exception %s' % (path_file,e))
-            sys.exit(1)
+            raise SatGranuleError('open_file: can not open file %s with exception %s' % (path_file,e))
     elif ext == ".h5":
         try:
             d = h5py.File(path_file,'r')
         except Exception as e:
             logging.error('open_file: can not open file %s with exception %s' % (path_file,e))
+            raise SatGranuleError('open_file: can not open file %s with exception %s' % (path_file,e))
     else:
         logging.error('open_file: unrecognized extension %s' % ext)
         return

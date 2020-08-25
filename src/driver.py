@@ -6,6 +6,7 @@ from job import Job
 from ingest.MODIS import Terra,Aqua
 from ingest.VIIRS import SNPP
 from utils.general import json_join
+from vis.sat_collection import SatCollection
 
 from multiprocessing import Process,Queue
 import os.path as osp
@@ -67,7 +68,8 @@ class Driver(object):
         """
         This function reads all satellite data retrieved and saved in JSON files.
         """
-        data = SatCollection(self.job).process()
+        self.job.manifest = json_join(self.job.job_path, self.job.sat_sources)
+        data = SatCollection(self.job).process_data()
         return data
 
 
