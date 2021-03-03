@@ -4,6 +4,7 @@
 
 import os, sys, logging, json, collections
 import os.path as osp
+from wrf.wrf_file import WRFFile
 
 class Dict(dict):
     """
@@ -139,6 +140,21 @@ def process_arguments(sys_cfg,job_file):
     tokens = load_json('etc/tokens.json')
     args.update(tokens)
     return args
+
+def process_bounds(bbox):
+    """
+    Process initial bounds from wrfout file or bounding box 
+
+    :param bbox: string with wrfout file path or bounding box in an iterable
+    """
+    if isinstance(bbox,str):
+        if osp.exists(bbox):    
+            fxlon,fxlat = WRFFile(bbox).fire_grid()
+            return (fxlon.min(),fxlon.max(),fxlat.min(),fxlat.max())
+        else:
+            return None
+    else:
+        return tuple(bbox)
 
 def json_join(path,json_list):
     """

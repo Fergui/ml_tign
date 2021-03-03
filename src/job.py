@@ -2,7 +2,7 @@
 # Angel Farguell, CU Denver
 #
 
-from utils.general import Dict, load_sys_cfg, make_dir, process_arguments
+from utils.general import Dict, load_sys_cfg, make_dir, process_arguments, process_bounds
 from utils.times import esmf_now, str_to_dt
 
 import logging,json
@@ -28,10 +28,10 @@ class Job(Dict):
         # job path
         self.job_path = osp.join(self.workspace_path,self.job_name)
         make_dir(self.job_path)	
-        # add new attributes
-        self.bounds = tuple(self.bbox) 
         # save job state in work directory
         json.dump(self, open(osp.join(self.job_path,'job.json'),'w'), indent=4, separators=(',', ': '))
+        # add new attributes
+        self.bounds = process_bounds(self.bbox) 
         self.from_utc = str_to_dt(self.start_utc)
         self.to_utc = str_to_dt(self.end_utc)
         self.times = (self.from_utc,self.to_utc)
