@@ -21,20 +21,20 @@ class DownloadError(Exception):
     """
     pass
 
-def request_url(url,use_urllib2=False,appkey=None):
+def request_url(url,use_urllib2=False,token=None):
     """
     Request web url
 
     :param url: the remote URL
     :param url: the remote URL
     """
-    if appkey:
-        r = urequest.urlopen(urequest.Request(url,headers={'Authorization': 'Bearer {}'.format(appkey)})) if use_urllib2 else requests.get(url, stream=True, headers={'Authorization': 'Bearer {}'.format(appkey)})   
+    if token:
+        r = urequest.urlopen(urequest.Request(url,headers={'Authorization': 'Bearer {}'.format(token)})) if use_urllib2 else requests.get(url, stream=True, headers={'Authorization': 'Bearer {}'.format(token)})   
     else:
         r = urequest.urlopen(url) if use_urllib2 else requests.get(url, stream=True)
     return r
 
-def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_seconds, appkey=None):
+def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_seconds, token=None):
     """
     Download a remote URL to the location local_path with retries.
 
@@ -46,7 +46,7 @@ def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_s
     :param local_path: the path to the local file
     :param max_retries: how many times we may retry to download the file
     :param sleep_seconds: sleep seconds between retries
-    :param appkey: use a header appkey if specified
+    :param token: use a header token if specified
     """
     logging.info('download_url - {0} as {1}'.format(url, local_path))
     logging.debug('download_url - if download fails, will try {0} times and wait {1} seconds each time'.format(max_retries, sleep_seconds))
@@ -57,13 +57,13 @@ def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_s
     use_urllib2 = url[:6] == 'ftp://'
 
     try:
-        r = request_url(url,use_urllib2,appkey)
+        r = request_url(url,use_urllib2,token)
     except Exception as e:
         if max_retries > 0:
             logging.info('download_url - not found, trying again, retries available {}'.format(max_retries))
             logging.info('download_url - sleeping {} seconds'.format(sec))
             time.sleep(sleep_seconds)
-            download_url(url, local_path, max_retries=max_retries-1, appkey=appkey)
+            download_url(url, local_path, max_retries=max_retries-1, token=token)
         return
 
     logging.info('download_url - {0} as {1}'.format(url,local_path))
@@ -71,15 +71,15 @@ def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_s
     command=[wget,'-O',ensure_dir(local_path),url]
     for opt in wget_options:
         command.insert(1,opt)
-    if appkey:
-        command.insert(1,'--header=\'Authorization: Bearer {}\''.format(appkey))
+    if token:
+        command.insert(1,'--header=\'Authorization: Bearer {}\''.format(token))
     logging.info(' '.join(command))
     subprocess.call(' '.join(command),shell=True)
 
     file_size = osp.getsize(local_path)
 
     # content size may have changed during download
-    r = request_url(url,use_urllib2,appkey)
+    r = request_url(url,use_urllib2,token)
     content_size = int(r.headers.get('content-length',0))
 
     logging.info('download_url - local file size {0} remote content size {1}'.format(file_size, content_size))
@@ -91,7 +91,7 @@ def download_url(url, local_path, max_retries=max_retries, sleep_seconds=sleep_s
             # and overwrite previously downloaded data
             logging.info('download_url - sleeping {} seconds'.format(sleep_seconds))
             time.sleep(sleep_seconds)
-            download_url(url, local_path, max_retries = max_retries-1, appkey = appkey)
+            download_url(url, local_path, max_retries = max_retries-1, token = token)
             return  # success
         else:
             os.remove(local_path)

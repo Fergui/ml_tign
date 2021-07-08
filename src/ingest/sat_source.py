@@ -33,7 +33,7 @@ class SatSource(object):
         self.ingest_dir=osp.abspath(osp.join(js.get('ingest_path','ingest'),self.prefix))
         self.cache_dir=osp.abspath(js.get('cache_path','cache'))
         self.sys_dir=osp.abspath(js.get('sys_install_path'))
-        self.appkey=js.get('appkey')
+        self.tokens=js.get('tokens')
         self.bounds=js.get('bounds')
         self.times=(js.get('from_utc'),js.get('to_utc'))
         lonmin,lonmax,latmin,latmax = self.bounds
@@ -154,12 +154,12 @@ class SatSource(object):
 
         return gmetas
 
-    def download_data(self, urls, appkey):
+    def download_data(self, urls, token):
         """
         Download a satellite file from a satellite service
 
         :param urls: the URLs of the file
-        :param appkey: key to use for the download or None if not
+        :param token: key to use for the download or None if not
         """
         for url in urls:
             logging.info('download_sat - downloading {0} satellite data from {1}'.format(self.prefix, url))
@@ -170,7 +170,7 @@ class SatSource(object):
                 return {'url': urls[0],'local_path': sat_path}
             else:
                 try:
-                    download_url(url, sat_path, appkey=appkey)
+                    download_url(url, sat_path, token=token)
                     return {'url': url,'local_path': sat_path,'downloaded': datetime.datetime.now}
                 except DownloadError as e:
                     logging.warning('download_sat - {0} cannot download satellite file {1}'.format(self.prefix, url))
@@ -194,11 +194,11 @@ class SatSource(object):
                 fire_meta = metas['fire'][g_id]
                 logging.info('retrieve_metas - downloading product id {}'.format(g_id))
                 urls = [geo_meta['links'][0]['href'],geo_meta.get('archive_url')]
-                m_geo = self.download_data(urls,self.datacenter_to_appkey(geo_meta['data_center']))
+                m_geo = self.download_data(urls,self.datacenter_to_token(geo_meta['data_center']))
                 if m_geo:
                     geo_meta.update(m_geo)
                     urls = [fire_meta['links'][0]['href'],fire_meta.get('archive_url')]
-                    m_fire = self.download_data(urls,self.datacenter_to_appkey(fire_meta['data_center']))
+                    m_fire = self.download_data(urls,self.datacenter_to_token(fire_meta['data_center']))
                     if m_fire:
                         fire_meta.update(m_fire)
                         manifest.update({g_id: {
@@ -232,15 +232,15 @@ class SatSource(object):
 
         return manifest
 
-    def datacenter_to_appkey(self,data_center):
+    def datacenter_to_token(self,data_center):
         """
-        From data center to appkey to use for that data center
+        From data center to token to use for that data center
 
         :param data_center: string with the data center information
         """
-        return {'LAADS': self.appkey,
+        return {'LAADS': self.tokens.get('laads',None),
                 'LPDAAC_ECS': None,
-                'LANCEMODIS': self.appkey
+                'LANCEMODIS': self.tokens.get('nrt',None)
             }.get(data_center,None)
 
     # instance variables

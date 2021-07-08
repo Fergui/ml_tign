@@ -7,6 +7,7 @@ from ingest.MODIS import Terra,Aqua
 from ingest.VIIRS import SNPP
 from utils.general import json_join
 from vis.sat_collection import SatCollection
+from ml.svm import SVM
 
 from multiprocessing import Process,Queue
 import os.path as osp
@@ -105,5 +106,6 @@ if __name__=='__main__':
     # retrieve satellite data
     dv.retrieve_sat_data()
     # read satellite data
-    dv.read_sat_data()
+    data = dv.read_sat_data()
     # run ML estimation
+    svm = SVM()

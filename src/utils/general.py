@@ -138,7 +138,7 @@ def process_arguments(sys_cfg,job_file):
     args.update(svm_args)
     # load tokens if etc/tokens.json exists
     tokens = load_json('etc/tokens.json')
-    args.update(tokens)
+    args.update({'tokens': tokens})
     return args
 
 def process_bounds(bbox):
