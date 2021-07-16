@@ -106,7 +106,9 @@ class SVM(object):
             sample_weight = sample_weight[self.sample_indices]
         logging.info('SVM.grid_cv - tunning hyperparameters')
         logging.info('SVM.grid_cv - parameter grid: {}'.format(self.param_grid))
-        self.grid_cv = sklearn.model_selection.GridSearchCV(estimator=self.model, param_grid=self.param_grid, cv=3, verbose=4, n_jobs=-2)
+        scorer = sklearn.metrics.make_scorer(sklearn.metrics.f1_score,average='weighted')
+        self.grid_cv = sklearn.model_selection.GridSearchCV(estimator=self.model, param_grid=self.param_grid, 
+							    scoring=scorer, cv=3, verbose=4, n_jobs=-2)
         self.grid_cv.fit(X, y, sample_weight=sample_weight)
         logging.info('SVM.grid_cv - best parameters: {}'.format(self.grid_cv.best_params_))
         self.model = self.grid_cv.best_estimator_
